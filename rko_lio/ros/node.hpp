@@ -61,6 +61,7 @@ public:
   std::string odom_frame = "odom";
   std::string odom_topic = "/rko_lio/odometry";
   std::string map_topic = "/rko_lio/local_map";
+  std::vector<double> odom_variance; // x y z r p yaw vx vy vz vr vr vp vyaw
 
   bool dump_results = false;
   std::string results_dir = "results";

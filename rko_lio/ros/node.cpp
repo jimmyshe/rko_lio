@@ -75,6 +75,12 @@ Node::Node(const std::string& node_name, const rclcpp::NodeOptions& options) {
   lidar_frame = node->declare_parameter<std::string>("lidar_frame", lidar_frame);
   odom_frame = node->declare_parameter<std::string>("odom_frame", odom_frame);
   odom_topic = node->declare_parameter<std::string>("odom_topic", odom_topic);
+  odom_variance = node->declare_parameter<std::vector<double>>(
+      "odom_variance", {0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001});
+
+  if (odom_variance.size() != 12) {
+    throw std::runtime_error("odom_variance must be a 12-element vector  x y z r p yaw vx vy vz vr vr vp vyaw");
+  }
 
   // tf
   invert_odom_tf = node->declare_parameter<bool>("invert_odom_tf", invert_odom_tf);
@@ -373,6 +379,21 @@ void Node::publish_odometry(const core::State& state, const core::Secondsd& stam
   odom_msg.pose.pose = utils::sophus_to_pose(state.pose);
   utils::eigen_vector3d_to_ros_xyz(state.velocity, odom_msg.twist.twist.linear);
   utils::eigen_vector3d_to_ros_xyz(state.angular_velocity, odom_msg.twist.twist.angular);
+
+  odom_msg.pose.covariance.at(0) = odom_variance.at(0);
+  odom_msg.pose.covariance.at(7) = odom_variance.at(1);
+  odom_msg.pose.covariance.at(14) = odom_variance.at(2);
+  odom_msg.pose.covariance.at(21) = odom_variance.at(3);
+  odom_msg.pose.covariance.at(28) = odom_variance.at(4);
+  odom_msg.pose.covariance.at(35) = odom_variance.at(5);
+
+  odom_msg.twist.covariance.at(0) = odom_variance.at(6);
+  odom_msg.twist.covariance.at(7) = odom_variance.at(7);
+  odom_msg.twist.covariance.at(14) = odom_variance.at(8);
+  odom_msg.twist.covariance.at(21) = odom_variance.at(9);
+  odom_msg.twist.covariance.at(28) = odom_variance.at(10);
+  odom_msg.twist.covariance.at(35) = odom_variance.at(11);
+
   odom_publisher->publish(odom_msg);
 }
 
