@@ -102,7 +102,7 @@ Node::Node(const std::string& node_name, const rclcpp::NodeOptions& options) {
   if (publish_deskewed_scan) {
     frame_publisher = node->create_publisher<sensor_msgs::msg::PointCloud2>("/rko_lio/frame", publisher_qos);
   }
-
+  publish_tf = node->declare_parameter<bool>("publish_tf", publish_tf);
   publish_local_map = node->declare_parameter<bool>("publish_local_map", publish_local_map);
   if (publish_local_map) {
     map_topic = node->declare_parameter<std::string>("map_topic", "/rko_lio/local_map");
@@ -357,19 +357,22 @@ void Node::registration_loop() {
 void Node::publish_odometry(const core::State& state, const core::Secondsd& stamp) const {
   const std::string_view from_frame = base_frame;
   const std::string_view to_frame = odom_frame;
-  // tf message
-  geometry_msgs::msg::TransformStamped transform_msg;
-  transform_msg.header.stamp = rclcpp::Time(std::chrono::duration_cast<std::chrono::nanoseconds>(stamp).count());
-  if (invert_odom_tf) {
-    transform_msg.header.frame_id = from_frame;
-    transform_msg.child_frame_id = to_frame;
-    transform_msg.transform = utils::sophus_to_transform(state.pose.inverse());
-  } else {
-    transform_msg.header.frame_id = to_frame;
-    transform_msg.child_frame_id = from_frame;
-    transform_msg.transform = utils::sophus_to_transform(state.pose);
+
+  if (publish_local_map) {
+    // tf message
+    geometry_msgs::msg::TransformStamped transform_msg;
+    transform_msg.header.stamp = rclcpp::Time(std::chrono::duration_cast<std::chrono::nanoseconds>(stamp).count());
+    if (invert_odom_tf) {
+      transform_msg.header.frame_id = from_frame;
+      transform_msg.child_frame_id = to_frame;
+      transform_msg.transform = utils::sophus_to_transform(state.pose.inverse());
+    } else {
+      transform_msg.header.frame_id = to_frame;
+      transform_msg.child_frame_id = from_frame;
+      transform_msg.transform = utils::sophus_to_transform(state.pose);
+    }
+    tf_broadcaster->sendTransform(transform_msg);
   }
-  tf_broadcaster->sendTransform(transform_msg);
 
   // odometry msg
   nav_msgs::msg::Odometry odom_msg;

@@ -71,6 +71,7 @@ public:
   bool publish_lidar_acceleration = false;
   bool publish_deskewed_scan = false;
   bool publish_local_map = false;
+  bool publish_tf = false;
 
   Sophus::SE3d extrinsic_imu2base;
   Sophus::SE3d extrinsic_lidar2base;
