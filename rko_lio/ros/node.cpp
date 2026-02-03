@@ -160,6 +160,13 @@ Node::Node(const std::string& node_name, const rclcpp::NodeOptions& options) {
   dump_results = node->declare_parameter<bool>("dump_results", dump_results);
   results_dir = node->declare_parameter<std::string>("results_dir", results_dir);
   run_name = node->declare_parameter<std::string>("run_name", run_name);
+
+  // buffer sizes
+  max_lidar_buffer_size = static_cast<size_t>(
+      node->declare_parameter<int>("max_lidar_buffer_size", static_cast<int>(max_lidar_buffer_size)));
+  max_imu_buffer_size =
+      static_cast<size_t>(node->declare_parameter<int>("max_imu_buffer_size", static_cast<int>(max_imu_buffer_size)));
+
   rclcpp::on_shutdown([this]() {
     // i'll need to look into rclcpp::Context a bit more, but for now i think this callback should be called before
     // anything gets destroyed.
@@ -237,6 +244,10 @@ void Node::imu_callback(const sensor_msgs::msg::Imu::ConstSharedPtr& imu_msg) {
   {
     std::lock_guard lock(buffer_mutex);
     imu_buffer.emplace(imu_msg_to_imu_data(*imu_msg));
+    if (imu_buffer.size() > max_imu_buffer_size) {
+      RCLCPP_WARN_STREAM_THROTTLE(node->get_logger(), *node->get_clock(), 1000,
+                                  "Registration imu buffer limit reached. Dropping message.");
+    }
     atomic_can_process = !lidar_buffer.empty() && imu_buffer.back().time > lidar_buffer.front().timestamps.max;
   }
   if (atomic_can_process) {
@@ -259,7 +270,8 @@ void Node::lidar_callback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& l
   {
     std::lock_guard lock(buffer_mutex);
     if (lidar_buffer.size() >= max_lidar_buffer_size) {
-      RCLCPP_WARN_STREAM(node->get_logger(), "Registration lidar buffer limit reached. Dropping frame.");
+      RCLCPP_WARN_STREAM_THROTTLE(node->get_logger(), *node->get_clock(), 1000,
+                                  "Registration lidar buffer limit reached. Dropping frame.");
       sync_condition_variable.notify_one();
       return;
     }

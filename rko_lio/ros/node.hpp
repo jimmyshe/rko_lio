@@ -99,6 +99,7 @@ public:
   std::queue<core::ImuControl> imu_buffer;
   std::queue<core::LidarFrame> lidar_buffer;
   size_t max_lidar_buffer_size = 50;
+  size_t max_imu_buffer_size = 2000;
 
   Node() = delete;
   Node(const std::string& node_name, const rclcpp::NodeOptions& options);
